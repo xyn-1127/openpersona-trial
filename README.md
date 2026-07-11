@@ -20,16 +20,20 @@ survey scripts here are small Ollama-based equivalents.
 ## Quick start
 
 ```bash
-# 1. Generate a persona from its config
-npx openpersona create --config ./rosa.json     # static persona
-npx openpersona create --config ./maya.json     # persona with evolution
+# 1. Install the pinned OpenPersona version from package-lock.json
+npm ci
 
-# 2. Chat with it
-node chat.js                # loads rosa-mendez by default
-node chat.js maya-santos    # load another persona by slug
+# 2. Generate the two example personas
+npx openpersona create --config ./rosa.json
+npx openpersona create --config ./maya.json
 
-# 3. Run a short survey through it (saves a CSV)
-node survey-chat.js
+# 3. Chat with either generated persona
+node chat.js rosa-mendez
+node chat.js maya-santos
+
+# 4. Run a short survey through either persona (saves a CSV)
+node survey-chat.js rosa-mendez
+node survey-chat.js maya-santos
 ```
 
 ## What's in here

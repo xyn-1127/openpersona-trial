@@ -4,9 +4,11 @@
   "private": true,
   "description": "Replication of the OpenPersona persona-creation walkthrough",
   "scripts": {
-    "create:rosa": "npx openpersona create --config ./rosa.json",
-    "create:maya": "npx openpersona create --config ./maya.json",
+    "create": "openpersona create",
     "chat": "node chat.js",
     "survey": "node survey-chat.js"
+  },
+  "dependencies": {
+    "openpersona": "0.21.1"
   }
 }
