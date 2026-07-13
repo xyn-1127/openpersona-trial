@@ -30,7 +30,22 @@ const soul = fs.readFileSync(path.join(dir, 'soul', 'injection.md'), 'utf-8')
   .replace(/<!--[^>]*-->/g, '')
   .trim();
 const personaJson = JSON.parse(fs.readFileSync(path.join(dir, 'persona.json'), 'utf-8'));
-const personaName = personaJson.personaName || slug;
+const personaName = personaJson.personaName || personaJson.soul?.identity?.personaName || slug;
+
+function identityPrompt(persona) {
+  const bio = persona.bio || persona.soul?.identity?.bio;
+  const personality = persona.personality || persona.soul?.character?.personality;
+  const speakingStyle = persona.speakingStyle || persona.soul?.character?.speakingStyle;
+
+  return [
+    'Adopt the following persona identity consistently throughout the conversation:',
+    `Name: ${personaName}`,
+    bio ? `Background: ${bio}` : null,
+    personality ? `Core personality: ${personality}` : null,
+    speakingStyle ? `Speaking style: ${speakingStyle}` : null,
+    'Use this background when answering personal or situational questions, while following the safety and self-awareness rules below.'
+  ].filter(Boolean).join('\n');
+}
 
 // If evolution is on, inject the current state so the answers reflect it.
 const evolutionEnabled = personaJson.evolution?.instance?.enabled === true;
@@ -55,7 +70,10 @@ const briefing = evolutionBriefing();
 
 // Each question gets a fresh context so items don't contaminate each other.
 async function askOne(question) {
-  const messages = [{ role: 'system', content: soul }];
+  const messages = [
+    { role: 'system', content: identityPrompt(personaJson) },
+    { role: 'system', content: soul }
+  ];
   if (briefing) messages.push({ role: 'system', content: briefing });
   messages.push({ role: 'user', content: `${question}\n\n(Answer briefly, 1-2 sentences, in character.)` });
   const res = await fetch(OLLAMA_URL, {

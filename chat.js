@@ -28,6 +28,21 @@ const personaJson = JSON.parse(fs.readFileSync(path.join(dir, 'persona.json'), '
 const personaName = personaJson.personaName || personaJson.soul?.identity?.personaName || slug;
 const evolutionEnabled = personaJson.evolution?.instance?.enabled === true;
 
+function identityPrompt(persona) {
+  const bio = persona.bio || persona.soul?.identity?.bio;
+  const personality = persona.personality || persona.soul?.character?.personality;
+  const speakingStyle = persona.speakingStyle || persona.soul?.character?.speakingStyle;
+
+  return [
+    'Adopt the following persona identity consistently throughout the conversation:',
+    `Name: ${personaName}`,
+    bio ? `Background: ${bio}` : null,
+    personality ? `Core personality: ${personality}` : null,
+    speakingStyle ? `Speaking style: ${speakingStyle}` : null,
+    'Use this background when answering personal or situational questions, while following the safety and self-awareness rules below.'
+  ].filter(Boolean).join('\n');
+}
+
 function stateSync(args) {
   try {
     return execFileSync('node', [path.join('scripts', 'state-sync.js'), ...args],
@@ -37,15 +52,36 @@ function stateSync(args) {
   }
 }
 
+function evolutionBriefing(state) {
+  if (!state?.exists) return null;
+
+  const currentState = {
+    relationship: state.relationship,
+    mood: state.mood,
+    evolvedTraits: state.evolvedTraits || [],
+    speakingStyleDrift: state.speakingStyleDrift,
+    interests: state.interests || {},
+    recentEvents: state.recentEvents || [],
+    pendingCommands: state.pendingCommands || []
+  };
+
+  return [
+    'This is your persisted evolution state from previous conversations:',
+    JSON.stringify(currentState, null, 2),
+    'Use this state throughout the conversation. Let the relationship stage, mood, evolved traits, speaking style, and interests shape how you respond.'
+  ].join('\n');
+}
+
 console.log(`\n  Persona: ${personaName} (${slug})`);
 console.log(`  Model:   ${MODEL} (Ollama)`);
 
+let initialState = null;
 if (evolutionEnabled) {
   const raw = stateSync(['read']);
   if (raw) {
     try {
-      const st = JSON.parse(raw);
-      console.log(`  Stage:   ${st.relationship?.stage}  |  mood: ${st.mood?.baseline}  |  interactions: ${st.relationship?.interactionCount}`);
+      initialState = JSON.parse(raw);
+      console.log(`  Stage:   ${initialState.relationship?.stage}  |  mood: ${initialState.mood?.current || initialState.mood?.baseline}  |  interactions: ${initialState.relationship?.interactionCount}`);
     } catch { /* ignore */ }
   }
 } else {
@@ -53,7 +89,13 @@ if (evolutionEnabled) {
 }
 console.log(`  Type your message. Type "exit" or Ctrl+C to quit.\n`);
 
-const messages = [{ role: 'system', content: soul }];
+const messages = [
+  { role: 'system', content: identityPrompt(personaJson) },
+  { role: 'system', content: soul }
+];
+
+const briefing = evolutionBriefing(initialState);
+if (briefing) messages.push({ role: 'system', content: briefing });
 
 let inFlight = 0;
 let closing = false;
